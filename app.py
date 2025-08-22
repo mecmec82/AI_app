@@ -2,6 +2,7 @@ import streamlit as st
 import google.generative_ai as genai
 import json
 import time
+import os
 
 # --- Configure Gemini API ---
 
