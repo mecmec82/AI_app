@@ -1,65 +1,65 @@
 import streamlit as st
 
-# --- Quiz Data ---
+# --- Quiz Data (Updated for 8-year-old and cute dogs!) ---
 quiz_questions = [
     {
-        "question": "Imagine your favourite pop star is writing a tweet about her latest hit song. Which punctuation mark is missing from this sentence? 'Wow what an amazing crowd tonight!' 🎶",
+        "question": "Your dog, Waffle, just did an amazing trick! You want to write about it with lots of excitement. Which punctuation mark is missing from this sentence? 'Waffle did it Wow'",
         "options": [", (Comma)", ". (Full stop)", "! (Exclamation mark)", "? (Question mark)"],
         "answer": "! (Exclamation mark)",
         "subject": "English"
     },
     {
-        "question": "A gymnast is performing a beautiful split on the balance beam. What angle do her legs form when they are perfectly straight in a split? 📐",
-        "options": ["90 degrees", "180 degrees", "45 degrees", "360 degrees"],
-        "answer": "180 degrees",
+        "question": "If you're drawing a cozy dog bed that's shaped like a perfect square, how many equal sides does a square have? 🐶",
+        "options": ["Two", "Three", "Four", "Five"],
+        "answer": "Four",
         "subject": "Maths"
     },
     {
-        "question": "When a gymnast jumps really high during her floor routine, which natural force pulls her back down to the mat? 💪",
+        "question": "When your dog jumps up high to catch a bouncy ball, which natural force makes the ball (and your dog!) come back down to the ground? 💪",
         "options": ["Magnetism", "Friction", "Gravity", "Lift"],
         "answer": "Gravity",
         "subject": "Science"
     },
     {
-        "question": "Thinking about fabulous historical fashion for a pop star's music video, which historical era is known for its very elaborate, grand dresses, big skirts, and sometimes even powdered wigs? 👑",
-        "options": ["The Roman Empire", "The Victorian Era", "The Stone Age", "The Future Space Age"],
-        "answer": "The Victorian Era",
+        "question": "Long, long ago, in Ancient Egypt, people loved their dogs so much that they sometimes buried them with their owners! Which of these were the powerful rulers of Ancient Egypt? 👑",
+        "options": ["Knights", "Vikings", "Pharaohs", "Cowboys"],
+        "answer": "Pharaohs",
         "subject": "History"
     },
     {
-        "question": "You're helping design a make-up palette inspired by a pop star's hit song called 'Ocean Dreams.' Which colours would you mostly use to capture the feeling of the ocean? 🎨",
-        "options": ["Reds, oranges, and yellows", "Greens, blues, and silvers", "Browns, greys, and blacks", "Pinks, purples, and golds"],
-        "answer": "Greens, blues, and silvers",
+        "question": "You're drawing a beautiful Golden Retriever puppy! Which colours would you mostly use for its soft, fluffy fur? 🎨",
+        "options": ["Reds, purples, and blues", "Yellows, golds, and light browns", "Greys, blacks, and whites", "Bright pinks and greens"],
+        "answer": "Yellows, golds, and light browns",
         "subject": "Art & Design"
     },
     {
-        "question": "What is the super catchy, memorable part of a pop song that often repeats and gets stuck in everyone's head? 🎤",
+        "question": "You're making a happy song about your dog! What is the super catchy part of a song that often repeats, and everyone can sing along to? 🎤",
         "options": ["The bridge", "The verse", "The chorus", "The outro"],
         "answer": "The chorus",
         "subject": "Music"
     },
     {
-        "question": "Your favourite gymnastics leotard is absolutely **dazzling**! It's so bright and sparkly. What does the word 'dazzling' mean? ✨",
-        "options": ["Dull and plain", "Very beautiful and shimmering brightly", "A little bit sad", "Old and worn out"],
-        "answer": "Very beautiful and shimmering brightly",
+        "question": "Your tiny puppy, Pip, is so **adorable** when she sleeps in her basket. What does the word 'adorable' mean? ✨",
+        "options": ["A bit grumpy", "Very cute and loveable", "Sleepy and quiet", "Big and noisy"],
+        "answer": "Very cute and loveable",
         "subject": "English"
     },
     {
-        "question": "A rhythmic gymnast uses a ribbon that is 6 meters long. If she cuts off 1.5 meters because it's too long, how long is her ribbon now? 🎀",
-        "options": ["7.5 meters", "5 meters", "4.5 meters", "3.5 meters"],
+        "question": "Your dog's walking lead is 3 meters long. If you buy a new, longer lead that is 1.5 meters *longer* than the old one, how long is the new lead? 🎀",
+        "options": ["1.5 meters", "3 meters", "4.5 meters", "5 meters"],
         "answer": "4.5 meters",
         "subject": "Maths"
     },
     {
-        "question": "Many make-up products, like foundation and powder, often contain tiny particles from the Earth to make them smooth and give them colour. What is a common word for these natural substances found in the ground? 💖",
-        "options": ["Plastics", "Sugar", "Minerals", "Fabric"],
-        "answer": "Minerals",
+        "question": "What very important thing do all living creatures, like your dog, need to drink every day to stay hydrated and healthy? 💧",
+        "options": ["Milk", "Juice", "Water", "Fizzy pop"],
+        "answer": "Water",
         "subject": "Science"
     },
     {
-        "question": "The incredible Olympic Games, where gymnasts show off their amazing skills, first began in which ancient country? 🏛️",
-        "options": ["Egypt", "China", "Greece", "Italy"],
-        "answer": "Greece",
+        "question": "Scientists believe that all of our cute, cuddly pet dogs today originally came from which wild animal, thousands of years ago? 🐺",
+        "options": ["Bears", "Lions", "Wolves", "Cats"],
+        "answer": "Wolves",
         "subject": "History"
     }
 ]
@@ -75,6 +75,8 @@ if 'quiz_finished' not in st.session_state:
     st.session_state.quiz_finished = False
 if 'show_results' not in st.session_state:
     st.session_state.show_results = False
+if 'bonus_challenge_answer' not in st.session_state:
+    st.session_state.bonus_challenge_answer = ""
 
 # --- Functions for Quiz Navigation ---
 def next_question():
@@ -94,6 +96,7 @@ def restart_quiz():
     st.session_state.score = 0
     st.session_state.quiz_finished = False
     st.session_state.show_results = False
+    st.session_state.bonus_challenge_answer = "" # Clear bonus challenge answer
 
 def calculate_score():
     correct_answers_count = 0
@@ -104,7 +107,7 @@ def calculate_score():
 
 # --- Streamlit App Layout ---
 
-st.set_page_config(page_title="Glitter & Goals Quiz!", page_icon="✨")
+st.set_page_config(page_title="Cute Pups & Clever Minds Quiz!", page_icon="🐶")
 
 # Custom CSS for a touch of glam and ADHD-friendly spacing
 st.markdown("""
@@ -177,10 +180,10 @@ st.markdown("""
         margin-bottom: 10px;
     }
     </style>
-    """, unsafe_allow_html=True) # [6, 9, 10, 12]
+    """, unsafe_allow_html=True)
 
-st.markdown("<h1 class='main-header'>The Ultimate Glitter & Goals Quiz! ✨</h1>", unsafe_allow_html=True)
-st.markdown("Hello, Superstar! Get ready to test your knowledge in subjects from the UK National Curriculum, with a twist of your favourite things! You've got this! 💖", unsafe_allow_html=True)
+st.markdown("<h1 class='main-header'>The Cute Pups & Clever Minds Quiz! 🐶✨</h1>", unsafe_allow_html=True)
+st.markdown("Hi there, future dog trainer! Get ready to show off your super smarts with questions about school subjects, all inspired by our fluffy, four-legged friends! You are paw-some! 💖", unsafe_allow_html=True)
 
 if not st.session_state.quiz_finished:
     current_q = quiz_questions[st.session_state.current_question_idx]
@@ -188,15 +191,19 @@ if not st.session_state.quiz_finished:
     st.markdown(f"<div class='question-box'>", unsafe_allow_html=True)
     st.markdown(f"<p class='subheader'>Question {st.session_state.current_question_idx + 1} of {len(quiz_questions)} - {current_q['subject']}</p>", unsafe_allow_html=True)
     
-    # Use st.form to group question and options for better state management with radio buttons [2, 3, 4, 7, 11]
+    # Use st.form to group question and options for better state management with radio buttons
     with st.form(key=f"question_form_{st.session_state.current_question_idx}"):
         st.markdown(f"**{current_q['question']}**")
         
-        # Unique key for each radio button group
+        # Determine the initial index for the radio button
+        current_answer_idx = 0
+        if st.session_state.user_answers[st.session_state.current_question_idx] in current_q["options"]:
+            current_answer_idx = current_q["options"].index(st.session_state.user_answers[st.session_state.current_question_idx])
+            
         user_choice = st.radio(
             "Select your answer:",
             current_q["options"],
-            index=current_q["options"].index(st.session_state.user_answers[st.session_state.current_question_idx]) if st.session_state.user_answers[st.session_state.current_question_idx] else 0,
+            index=current_answer_idx,
             key=f"q_{st.session_state.current_question_idx}_radio",
             horizontal=True # Display options horizontally for better readability
         )
@@ -206,7 +213,7 @@ if not st.session_state.quiz_finished:
             if st.session_state.current_question_idx > 0:
                 st.form_submit_button("⬅️ Previous", on_click=previous_question)
         with col2:
-            submitted = st.form_submit_button("Submit Answer & Next ✨")
+            submitted = st.form_submit_button("Submit Answer & Next 🐾")
 
         if submitted:
             st.session_state.user_answers[st.session_state.current_question_idx] = user_choice
@@ -217,7 +224,7 @@ if not st.session_state.quiz_finished:
     st.markdown(f"</div>", unsafe_allow_html=True)
 
 else:
-    st.markdown("<h2 class='main-header'>Quiz Complete! 🎉</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='main-header'>Quiz Complete! You're a top dog! 🎉</h2>", unsafe_allow_html=True)
     st.markdown(f"<div class='score-display'>Your final score: {st.session_state.score} out of {len(quiz_questions)}!</div>", unsafe_allow_html=True)
 
     st.write("---")
@@ -236,8 +243,7 @@ else:
 
     st.markdown("---")
     st.markdown("### Bonus Challenge (Just for fun!)")
-    st.write("If you could combine gymnastics and pop music into one amazing performance, what would it look like? Describe it in one exciting sentence! 🌟")
-    st.text_area("Your amazing idea:", value=st.session_state.get('bonus_challenge_answer', ''))
-    st.session_state.bonus_challenge_answer = st.text_input("","") # A simple way to capture input, but it will clear on rerun if not saved properly. For a single input like this, a text_area is better for longer thoughts. I've updated this to use text_area and removed the extra st.text_input, simplifying the handling.
+    st.write("If you could design the most amazing, super-fun dog park in the world, what exciting things would it have for all the cute pups?")
+    st.session_state.bonus_challenge_answer = st.text_area("Your amazing idea:", value=st.session_state.bonus_challenge_answer, key="bonus_challenge_text_area")
 
-    st.button("Start Again! 🤸‍♀️", on_click=restart_quiz)
+    st.button("Start Again! 🐕", on_click=restart_quiz)
