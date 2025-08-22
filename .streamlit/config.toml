@@ -1,1 +1,4 @@
-
+[runner]
+# Specify a stable Python version for better library compatibility.
+# Python 3.11 is a good, widely supported choice.
+python_version = "3.11"
