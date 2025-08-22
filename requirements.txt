@@ -1,2 +1,4 @@
+json
+time
 streamlit
 google-genai==1.31.0
