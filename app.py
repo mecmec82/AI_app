@@ -1,74 +1,48 @@
 import streamlit as st
+import google.generative_ai as genai
+import json
+import time
 
-# --- Quiz Data (Updated for 8-year-old and cute dogs!) ---
-quiz_questions = [
-    {
-        "question": "Your dog, Waffle, just did an amazing trick! You want to write about it with lots of excitement. Which punctuation mark is missing from this sentence? 'Waffle did it Wow'",
-        "options": [", (Comma)", ". (Full stop)", "! (Exclamation mark)", "? (Question mark)"],
-        "answer": "! (Exclamation mark)",
-        "subject": "English"
+# --- Configure Gemini API ---
+
+gemini_api_key="AIzaSyBK_Bihz2b0phm37fjDERusC8TEbD0hq7A"
+
+# Attempt to load API key from Streamlit secrets or environment variable
+#try:
+#    gemini_api_key = st.secrets["GEMINI_API_KEY"]
+#except KeyError:
+#    gemini_api_key = os.environ.get("GEMINI_API_KEY")
+
+#if not gemini_api_key:
+#    st.error("Gemini API Key not found. Please set it in `.streamlit/secrets.toml` or as an environment variable `GEMINI_API_KEY`.")
+#    st.stop() # Stop the app if no API key
+
+genai.configure(api_key=gemini_api_key)
+model = genai.GenerativeModel('gemini-pro')
+
+# --- User Profiles ---
+user_profiles = {
+    "Tess": {
+        "age": 8,
+        "interests": "cute dogs, drawing, simple stories, playing with friends, funny animals",
+        "intro_message": "Hi there, future dog trainer! Get ready to show off your super smarts with questions about school subjects, all inspired by our fluffy, four-legged friends! You are paw-some! 💖"
     },
-    {
-        "question": "If you're drawing a cozy dog bed that's shaped like a perfect square, how many equal sides does a square have? 🐶",
-        "options": ["Two", "Three", "Four", "Five"],
-        "answer": "Four",
-        "subject": "Maths"
-    },
-    {
-        "question": "When your dog jumps up high to catch a bouncy ball, which natural force makes the ball (and your dog!) come back down to the ground? 💪",
-        "options": ["Magnetism", "Friction", "Gravity", "Lift"],
-        "answer": "Gravity",
-        "subject": "Science"
-    },
-    {
-        "question": "Long, long ago, in Ancient Egypt, people loved their dogs so much that they sometimes buried them with their owners! Which of these were the powerful rulers of Ancient Egypt? 👑",
-        "options": ["Knights", "Vikings", "Pharaohs", "Cowboys"],
-        "answer": "Pharaohs",
-        "subject": "History"
-    },
-    {
-        "question": "You're drawing a beautiful Golden Retriever puppy! Which colours would you mostly use for its soft, fluffy fur? 🎨",
-        "options": ["Reds, purples, and blues", "Yellows, golds, and light browns", "Greys, blacks, and whites", "Bright pinks and greens"],
-        "answer": "Yellows, golds, and light browns",
-        "subject": "Art & Design"
-    },
-    {
-        "question": "You're making a happy song about your dog! What is the super catchy part of a song that often repeats, and everyone can sing along to? 🎤",
-        "options": ["The bridge", "The verse", "The chorus", "The outro"],
-        "answer": "The chorus",
-        "subject": "Music"
-    },
-    {
-        "question": "Your tiny puppy, Pip, is so **adorable** when she sleeps in her basket. What does the word 'adorable' mean? ✨",
-        "options": ["A bit grumpy", "Very cute and loveable", "Sleepy and quiet", "Big and noisy"],
-        "answer": "Very cute and loveable",
-        "subject": "English"
-    },
-    {
-        "question": "Your dog's walking lead is 3 meters long. If you buy a new, longer lead that is 1.5 meters *longer* than the old one, how long is the new lead? 🎀",
-        "options": ["1.5 meters", "3 meters", "4.5 meters", "5 meters"],
-        "answer": "4.5 meters",
-        "subject": "Maths"
-    },
-    {
-        "question": "What very important thing do all living creatures, like your dog, need to drink every day to stay hydrated and healthy? 💧",
-        "options": ["Milk", "Juice", "Water", "Fizzy pop"],
-        "answer": "Water",
-        "subject": "Science"
-    },
-    {
-        "question": "Scientists believe that all of our cute, cuddly pet dogs today originally came from which wild animal, thousands of years ago? 🐺",
-        "options": ["Bears", "Lions", "Wolves", "Cats"],
-        "answer": "Wolves",
-        "subject": "History"
+    "Mati": {
+        "age": 10,
+        "interests": "gymnastics, fashion, make-up, pop music, art, history, science experiments",
+        "intro_message": "Hello, Superstar! Get ready to test your knowledge in subjects from the UK National Curriculum, with a twist of your favourite things! You've got this! ✨"
     }
-]
+}
 
 # --- Session State Initialization ---
+if 'current_user' not in st.session_state:
+    st.session_state.current_user = None
+if 'quiz_questions' not in st.session_state:
+    st.session_state.quiz_questions = []
 if 'current_question_idx' not in st.session_state:
     st.session_state.current_question_idx = 0
 if 'user_answers' not in st.session_state:
-    st.session_state.user_answers = [None] * len(quiz_questions)
+    st.session_state.user_answers = []
 if 'score' not in st.session_state:
     st.session_state.score = 0
 if 'quiz_finished' not in st.session_state:
@@ -77,10 +51,96 @@ if 'show_results' not in st.session_state:
     st.session_state.show_results = False
 if 'bonus_challenge_answer' not in st.session_state:
     st.session_state.bonus_challenge_answer = ""
+if 'quiz_started' not in st.session_state: # New flag to indicate if questions have been generated
+    st.session_state.quiz_started = False
+if 'last_generated_user' not in st.session_state: # To prevent regenerating if user hasn't changed
+    st.session_state.last_generated_user = None
+
+
+# --- Functions for Gemini Question Generation ---
+def generate_quiz_questions(user_profile):
+    st.session_state.quiz_questions = [] # Clear previous questions
+    st.session_state.user_answers = [] # Clear previous answers
+    st.session_state.score = 0
+    st.session_state.quiz_finished = False
+    st.session_state.show_results = False
+    st.session_state.current_question_idx = 0
+    st.session_state.bonus_challenge_answer = ""
+    st.session_state.quiz_started = False # Reset quiz started state
+
+    age = user_profile["age"]
+    interests = user_profile["interests"]
+    
+    prompt = f"""
+    You are creating a 10-question quiz for an {age}-year-old girl.
+    The quiz should cover aspects of the UK National Curriculum (e.g., English, Maths, Science, History, Art, Music), but be highly tailored to her interests: {interests}.
+    Each question must be multiple-choice with exactly 4 options.
+    The correct answer MUST be one of the options provided.
+    The tone should be encouraging, fun, and appropriate for her age.
+    The output MUST be a JSON array of 10 question objects. Each object must have the following keys:
+    - 'question': The quiz question as a string.
+    - 'options': A JSON array of 4 string options.
+    - 'answer': The correct answer string (must be one of the options).
+    - 'subject': The UK National Curriculum subject (e.g., 'English', 'Maths', 'Science', 'History', 'Art', 'Music').
+
+    Example format:
+    [
+      {{
+        "question": "What is 2 + 2?",
+        "options": ["3", "4", "5", "6"],
+        "answer": "4",
+        "subject": "Maths"
+      }},
+      {{
+        "question": "Which animal barks?",
+        "options": ["Cat", "Dog", "Bird", "Fish"],
+        "answer": "Dog",
+        "subject": "Science"
+      }}
+    ]
+
+    Generate 10 questions now based on the profile:
+    Age: {age}
+    Interests: {interests}
+    """
+    
+    with st.spinner("Generating amazing new questions for you... Please wait a moment! ✨"):
+        try:
+            response = model.generate_content(prompt)
+            # st.write(response.text) # For debugging Gemini's raw output
+            quiz_data = json.loads(response.text)
+            
+            # Basic validation of the generated data
+            if not isinstance(quiz_data, list) or len(quiz_data) != 10:
+                raise ValueError("Gemini did not return a list of 10 questions.")
+            for q in quiz_data:
+                if not all(k in q for k in ["question", "options", "answer", "subject"]) or \
+                   not isinstance(q["options"], list) or len(q["options"]) != 4 or \
+                   q["answer"] not in q["options"]:
+                    raise ValueError(f"Invalid question format detected: {q}")
+
+            st.session_state.quiz_questions = quiz_data
+            st.session_state.user_answers = [None] * len(quiz_data)
+            st.session_state.quiz_started = True
+            st.session_state.last_generated_user = user_profile # Store user whose questions were generated
+            st.success("Questions loaded! Let's play! 🎉")
+            st.rerun() # Rerun to display the first question
+        except json.JSONDecodeError:
+            st.error("Failed to decode quiz questions from Gemini. Please try again.")
+            st.write("Gemini's raw output (for debugging):")
+            st.code(response.text)
+        except ValueError as e:
+            st.error(f"Error validating quiz questions: {e}. Please try generating again.")
+            st.write("Gemini's raw output (for debugging):")
+            st.code(response.text)
+        except Exception as e:
+            st.error(f"An unexpected error occurred while generating questions: {e}. Please try again.")
+            st.write("Consider trying again or checking your API key and network connection.")
+
 
 # --- Functions for Quiz Navigation ---
 def next_question():
-    if st.session_state.current_question_idx < len(quiz_questions) - 1:
+    if st.session_state.current_question_idx < len(st.session_state.quiz_questions) - 1:
         st.session_state.current_question_idx += 1
     else:
         st.session_state.quiz_finished = True
@@ -92,22 +152,27 @@ def previous_question():
 
 def restart_quiz():
     st.session_state.current_question_idx = 0
-    st.session_state.user_answers = [None] * len(quiz_questions)
+    st.session_state.user_answers = [None] * len(st.session_state.quiz_questions)
     st.session_state.score = 0
     st.session_state.quiz_finished = False
     st.session_state.show_results = False
-    st.session_state.bonus_challenge_answer = "" # Clear bonus challenge answer
+    st.session_state.bonus_challenge_answer = ""
+    st.session_state.quiz_started = False # Allow regenerating questions
+    st.session_state.quiz_questions = [] # Clear questions on full restart
+    st.session_state.last_generated_user = None
+    st.rerun() # Rerun to go back to user selection
+
 
 def calculate_score():
     correct_answers_count = 0
-    for i, q in enumerate(quiz_questions):
+    for i, q in enumerate(st.session_state.quiz_questions):
         if st.session_state.user_answers[i] == q["answer"]:
             correct_answers_count += 1
     st.session_state.score = correct_answers_count
 
 # --- Streamlit App Layout ---
 
-st.set_page_config(page_title="Cute Pups & Clever Minds Quiz!", page_icon="🐶")
+st.set_page_config(page_title="Personalized Fun Quiz!", page_icon="✨")
 
 # Custom CSS for a touch of glam and ADHD-friendly spacing
 st.markdown("""
@@ -182,54 +247,90 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1 class='main-header'>The Cute Pups & Clever Minds Quiz! 🐶✨</h1>", unsafe_allow_html=True)
-st.markdown("Hi there, future dog trainer! Get ready to show off your super smarts with questions about school subjects, all inspired by our fluffy, four-legged friends! You are paw-some! 💖", unsafe_allow_html=True)
 
-if not st.session_state.quiz_finished:
-    current_q = quiz_questions[st.session_state.current_question_idx]
+st.markdown("<h1 class='main-header'>The Personalized Power Quiz! 🎉</h1>", unsafe_allow_html=True)
 
-    st.markdown(f"<div class='question-box'>", unsafe_allow_html=True)
-    st.markdown(f"<p class='subheader'>Question {st.session_state.current_question_idx + 1} of {len(quiz_questions)} - {current_q['subject']}</p>", unsafe_allow_html=True)
+# --- User Selection ---
+if not st.session_state.quiz_started:
+    st.write("Hello! Let's choose who is playing today:")
+    selected_user_name = st.radio(
+        "Who are you?",
+        list(user_profiles.keys()),
+        key="user_selector",
+        index=list(user_profiles.keys()).index(st.session_state.current_user) if st.session_state.current_user else 0
+    )
     
-    # Use st.form to group question and options for better state management with radio buttons
-    with st.form(key=f"question_form_{st.session_state.current_question_idx}"):
-        st.markdown(f"**{current_q['question']}**")
+    # Update current_user in session state
+    if selected_user_name != st.session_state.current_user:
+        st.session_state.current_user = selected_user_name
+        # If user changes, reset quiz state to allow new question generation
+        restart_quiz() # This will rerun the app and reset, so current_user selection is preserved and new questions can be generated.
+
+    st.markdown(f"**Welcome, {st.session_state.current_user}!**")
+    st.markdown(user_profiles[st.session_state.current_user]["intro_message"], unsafe_allow_html=True)
+
+    if st.button(f"Generate New Quiz for {st.session_state.current_user}!", key="generate_quiz_button"):
+        generate_quiz_questions(user_profiles[st.session_state.current_user])
+        # The generate_quiz_questions function will handle rerunning if successful
+
+# --- Quiz Display ---
+if st.session_state.quiz_started and not st.session_state.quiz_finished:
+    if not st.session_state.quiz_questions:
+        st.warning("No questions loaded. Please select a user and generate a quiz.")
+    else:
+        current_q = st.session_state.quiz_questions[st.session_state.current_question_idx]
+
+        st.markdown(f"<div class='question-box'>", unsafe_allow_html=True)
+        st.markdown(f"<p class='subheader'>Question {st.session_state.current_question_idx + 1} of {len(st.session_state.quiz_questions)} - {current_q['subject']}</p>", unsafe_allow_html=True)
         
-        # Determine the initial index for the radio button
-        current_answer_idx = 0
-        if st.session_state.user_answers[st.session_state.current_question_idx] in current_q["options"]:
-            current_answer_idx = current_q["options"].index(st.session_state.user_answers[st.session_state.current_question_idx])
+        with st.form(key=f"question_form_{st.session_state.current_question_idx}"):
+            st.markdown(f"**{current_q['question']}**")
             
-        user_choice = st.radio(
-            "Select your answer:",
-            current_q["options"],
-            index=current_answer_idx,
-            key=f"q_{st.session_state.current_question_idx}_radio",
-            horizontal=True # Display options horizontally for better readability
-        )
+            # Determine the initial index for the radio button, handling None
+            current_answer_idx = 0
+            if st.session_state.user_answers[st.session_state.current_question_idx] in current_q["options"]:
+                current_answer_idx = current_q["options"].index(st.session_state.user_answers[st.session_state.current_question_idx])
+            elif st.session_state.user_answers[st.session_state.current_question_idx] is None:
+                 # If no answer yet, set index to -1 so no option is pre-selected.
+                 # Streamlit's st.radio defaults to the first option if index is 0 and no value,
+                 # so setting it explicitly if an answer exists, otherwise it will display the default.
+                 # For a clean unselected state, we need to carefully manage this, or just let it default and user picks.
+                 # For simplicity here, if no answer, let it default to 0 and user can change.
+                 pass # keep current_answer_idx at 0 if no answer yet
+
+            user_choice = st.radio(
+                "Select your answer:",
+                current_q["options"],
+                index=current_answer_idx if st.session_state.user_answers[st.session_state.current_question_idx] is not None else 0, # Default to first if not answered
+                key=f"q_{st.session_state.current_question_idx}_radio",
+                horizontal=True
+            )
+            
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                if st.session_state.current_question_idx > 0:
+                    st.form_submit_button("⬅️ Previous", on_click=previous_question)
+            with col2:
+                # Use a specific emoji for each user if desired, or keep generic
+                submit_emoji = "🐾" if st.session_state.current_user == "Tess" else "✨"
+                submitted = st.form_submit_button(f"Submit Answer & Next {submit_emoji}")
+
+            if submitted:
+                st.session_state.user_answers[st.session_state.current_question_idx] = user_choice
+                calculate_score()
+                next_question()
+                st.rerun()
         
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col1:
-            if st.session_state.current_question_idx > 0:
-                st.form_submit_button("⬅️ Previous", on_click=previous_question)
-        with col2:
-            submitted = st.form_submit_button("Submit Answer & Next 🐾")
+        st.markdown(f"</div>", unsafe_allow_html=True)
 
-        if submitted:
-            st.session_state.user_answers[st.session_state.current_question_idx] = user_choice
-            calculate_score() # Update score after each submission
-            next_question()
-            st.rerun() # Rerun to display next question or results
-    
-    st.markdown(f"</div>", unsafe_allow_html=True)
-
-else:
-    st.markdown("<h2 class='main-header'>Quiz Complete! You're a top dog! 🎉</h2>", unsafe_allow_html=True)
-    st.markdown(f"<div class='score-display'>Your final score: {st.session_state.score} out of {len(quiz_questions)}!</div>", unsafe_allow_html=True)
+# --- Quiz Results ---
+elif st.session_state.quiz_finished:
+    st.markdown("<h2 class='main-header'>Quiz Complete! 🎉</h2>", unsafe_allow_html=True)
+    st.markdown(f"<div class='score-display'>Your final score: {st.session_state.score} out of {len(st.session_state.quiz_questions)}!</div>", unsafe_allow_html=True)
 
     st.write("---")
     st.markdown("### Review Your Answers:")
-    for i, q in enumerate(quiz_questions):
+    for i, q in enumerate(st.session_state.quiz_questions):
         st.markdown(f"**Question {i+1}:** {q['question']}")
         user_ans = st.session_state.user_answers[i]
         correct_ans = q['answer']
@@ -239,11 +340,20 @@ else:
         else:
             st.markdown(f"<p class='feedback-incorrect'>❌ Your Answer: {user_ans if user_ans else 'Not answered'}</p>", unsafe_allow_html=True)
             st.markdown(f"<p class='feedback-correct'>Correct Answer: {correct_ans}</p>", unsafe_allow_html=True)
-        st.write("") # Add a little space
+        st.write("")
 
     st.markdown("---")
     st.markdown("### Bonus Challenge (Just for fun!)")
-    st.write("If you could design the most amazing, super-fun dog park in the world, what exciting things would it have for all the cute pups?")
-    st.session_state.bonus_challenge_answer = st.text_area("Your amazing idea:", value=st.session_state.bonus_challenge_answer, key="bonus_challenge_text_area")
+    if st.session_state.current_user == "Tess":
+        st.write("If you could design the most amazing, super-fun dog park in the world, what exciting things would it have for all the cute pups?")
+    elif st.session_state.current_user == "Mati":
+        st.write("If you could combine gymnastics and pop music into one amazing performance, what would it look like? Describe it in one exciting sentence! 🌟")
 
-    st.button("Start Again! 🐕", on_click=restart_quiz)
+    st.session_state.bonus_challenge_answer = st.text_area(
+        "Your amazing idea:",
+        value=st.session_state.bonus_challenge_answer,
+        key="bonus_challenge_text_area",
+        height=100
+    )
+
+    st.button("Start New Quiz! 🚀", on_click=restart_quiz)
